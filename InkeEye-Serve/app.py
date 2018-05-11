@@ -4,29 +4,25 @@ from torchvision.transforms import ToPILImage, ToTensor
 from PIL import Image
 import torch
 import base64
+from flask_cors import CORS
 from io import BytesIO
 import numpy as np
+import re
 from model.espcn import ESPCN
 app = Flask(__name__)
-
+CORS(app)
 
 def base642im(img_string):
     """Decodes Base64 string to an image array"""
-    first_coma = img_string.find(',')
-    img_str = img_string[first_coma:].encode('ascii')
-    missing_padding = 4 - len(img_str) % 4
-    if missing_padding:
-        img_str += b'='* missing_padding
-    img_bytes = base64.decodestring(img_str)
-    im = np.asarray(bytearray(img_bytes), dtype="uint8")
-    im = Image.fromarray(im)
+    img_string = re.sub('^data:image/.+;base64,', '', img_string)
+    im = Image.open(BytesIO(base64.b64decode(img_string)))
     return im
 
 def im2base64(im):
     """Ecodes image array to Base64"""
     buffered = BytesIO()
     im.save(buffered, format="PNG")
-    img_str = base64.b64encode(buffered.getvalue())
+    img_str = "data:image/png;base64," + str(base64.b64encode(buffered.getvalue()), 'utf-8')
     return img_str
 
 def sr(im, scale):
@@ -51,8 +47,8 @@ def sr(im, scale):
 
 @app.route('/sr',methods=['POST'])
 def index():
-    data = request.form['data']
-    scale = request.form['scale']
+    data = request.json['data']
+    scale = request.json['scale']
     im = base642im(data)
     im = sr(im, scale)
     data_scaled = im2base64(im)
@@ -63,4 +59,5 @@ if __name__ == '__main__':
     global espcn 
     espcn = ESPCN()
     espcn.load_state_dict(torch.load('model/espcn.pth'))
+    espcn.cuda()
     app.run(port=8000)

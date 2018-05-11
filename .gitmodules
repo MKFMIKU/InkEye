@@ -1,0 +1,3 @@
+[submodule "InkEye-Client"]
+	path = InkEye-Client
+	url = git@github.com:MKFMIKU/InkEye-Client.git
