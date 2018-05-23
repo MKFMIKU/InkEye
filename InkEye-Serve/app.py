@@ -9,6 +9,8 @@ from io import BytesIO
 import numpy as np
 import re
 from model.espcn import ESPCN
+import os
+
 app = Flask(__name__)
 CORS(app)
 
@@ -44,13 +46,27 @@ def sr(im, scale):
     im = im.convert('RGB')
     return im
 
+def detect(im):
+    im.save('tmp/tmp.bmp')
+    os.system("cd model;python detect.py --det det")
+    im = Image.open('model/det/det_tmp.bmp')
+    return im    
+
 
 @app.route('/sr',methods=['POST'])
-def index():
+def sr_router():
     data = request.json['data']
     scale = request.json['scale']
     im = base642im(data)
     im = sr(im, scale)
+    data_scaled = im2base64(im)
+    return jsonify({'result': data_scaled})
+
+@app.route('/detect',methods=['POST'])
+def detect_router():
+    data = request.json['data']
+    im = base642im(data)
+    im = detect(im)
     data_scaled = im2base64(im)
     return jsonify({'result': data_scaled})
 
